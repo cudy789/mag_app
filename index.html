@@ -1,0 +1,359 @@
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport"
+        content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
+  <meta name="theme-color" content="#101827">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="apple-mobile-web-app-title" content="Sensor Lab">
+  <link rel="manifest" href="manifest.json">
+  <link rel="apple-touch-icon" href="icon.svg">
+  <title>iPhone Sensor Lab</title>
+
+<style>
+:root {
+  color-scheme: dark;
+  --bg: #101827;
+  --panel: #1b293b;
+  --text: #edf4ff;
+  --muted: #91a3ba;
+  --cyan: #43d9e8;
+  --green: #55e6a5;
+  --orange: #ffbd69;
+}
+* { box-sizing: border-box; }
+body {
+  margin: 0;
+  padding: 20px 16px 40px;
+  padding-top: max(20px, env(safe-area-inset-top));
+  padding-bottom: max(40px, env(safe-area-inset-bottom));
+  background: var(--bg);
+  color: var(--text);
+  font-family: -apple-system, BlinkMacSystemFont, sans-serif;
+}
+header { text-align: center; margin-bottom: 22px; }
+h1 { font-size: 25px; margin: 5px; }
+.subtitle { color: var(--muted); font-size: 13px; }
+.status {
+  display: inline-block;
+  margin-top: 10px;
+  padding: 6px 12px;
+  border-radius: 20px;
+  background: #334155;
+  color: var(--muted);
+  font-size: 12px;
+}
+.status.on { background: #124c3b; color: var(--green); }
+.controls { display: flex; gap: 10px; margin-bottom: 20px; }
+button {
+  border: 0;
+  border-radius: 12px;
+  padding: 14px;
+  font-size: 15px;
+  font-weight: 700;
+  flex: 1;
+  background: var(--cyan);
+  color: #061820;
+}
+button.secondary { background: #334155; color: white; }
+button:disabled { opacity: .5; }
+.section-title {
+  color: var(--muted);
+  font-size: 12px;
+  letter-spacing: 1.5px;
+  margin: 24px 2px 10px;
+  text-transform: uppercase;
+}
+.card {
+  background: var(--panel);
+  border: 1px solid #2a3c52;
+  border-radius: 16px;
+  padding: 16px;
+  margin-bottom: 12px;
+}
+.heading {
+  font-size: 14px;
+  font-weight: 700;
+  margin-bottom: 14px;
+}
+.compass { text-align: center; }
+.compass-value {
+  font-size: 58px;
+  font-weight: 700;
+  color: var(--cyan);
+  font-variant-numeric: tabular-nums;
+}
+.compass-unit { font-size: 17px; color: var(--muted); }
+.direction { font-size: 20px; margin-top: 2px; }
+.compass-note { color: var(--muted); font-size: 11px; margin-top: 8px; }
+.grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 9px;
+}
+.metric {
+  background: #101c2b;
+  border-radius: 10px;
+  padding: 12px 5px;
+  text-align: center;
+  min-width: 0;
+}
+.metric-label { color: var(--muted); font-size: 11px; margin-bottom: 8px; }
+.metric-value {
+  font-size: 17px;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  overflow-wrap: anywhere;
+}
+.metric-unit { color: var(--muted); font-size: 10px; margin-top: 5px; }
+.cyan { color: var(--cyan); }
+.green { color: var(--green); }
+.orange { color: var(--orange); }
+.footer {
+  color: var(--muted);
+  font-size: 11px;
+  line-height: 1.6;
+  text-align: center;
+  margin-top: 25px;
+}
+</style>
+</head>
+
+<body>
+<header>
+  <h1>Sensor Lab</h1>
+  <div class="subtitle">iPhone IMU & Compass Monitor</div>
+  <div id="status" class="status">Sensors stopped</div>
+</header>
+
+<div class="controls">
+  <button id="start">Start sensors</button>
+  <button id="stop" class="secondary" disabled>Stop</button>
+</div>
+
+<div class="section-title">Magnetic heading</div>
+<div class="card compass">
+  <div class="heading">COMPASS</div>
+  <div>
+    <span id="heading" class="compass-value">---</span>
+    <span class="compass-unit">°</span>
+  </div>
+  <div id="direction" class="direction">Waiting for sensor</div>
+  <div id="accuracy" class="compass-note">
+    Compass accuracy: unavailable
+  </div>
+  <div class="compass-note">
+    Heading is relative to magnetic north
+  </div>
+</div>
+
+<div class="section-title">Linear acceleration</div>
+<div class="card">
+  <div class="heading">ACCELEROMETER — GRAVITY REMOVED</div>
+  <div class="grid">
+    <div class="metric">
+      <div class="metric-label">X</div>
+      <div id="ax" class="metric-value cyan">---</div>
+      <div class="metric-unit">m/s²</div>
+    </div>
+    <div class="metric">
+      <div class="metric-label">Y</div>
+      <div id="ay" class="metric-value cyan">---</div>
+      <div class="metric-unit">m/s²</div>
+    </div>
+    <div class="metric">
+      <div class="metric-label">Z</div>
+      <div id="az" class="metric-value cyan">---</div>
+      <div class="metric-unit">m/s²</div>
+    </div>
+  </div>
+</div>
+
+<div class="section-title">Acceleration including gravity</div>
+<div class="card">
+  <div class="heading">RAW ACCELERATION</div>
+  <div class="grid">
+    <div class="metric">
+      <div class="metric-label">X</div>
+      <div id="gx" class="metric-value green">---</div>
+      <div class="metric-unit">m/s²</div>
+    </div>
+    <div class="metric">
+      <div class="metric-label">Y</div>
+      <div id="gy" class="metric-value green">---</div>
+      <div class="metric-unit">m/s²</div>
+    </div>
+    <div class="metric">
+      <div class="metric-label">Z</div>
+      <div id="gz" class="metric-value green">---</div>
+      <div class="metric-unit">m/s²</div>
+    </div>
+  </div>
+</div>
+
+<div class="section-title">Gyroscope</div>
+<div class="card">
+  <div class="heading">ROTATION RATE</div>
+  <div class="grid">
+    <div class="metric">
+      <div class="metric-label">ALPHA</div>
+      <div id="ra" class="metric-value orange">---</div>
+      <div class="metric-unit">°/sec</div>
+    </div>
+    <div class="metric">
+      <div class="metric-label">BETA</div>
+      <div id="rb" class="metric-value orange">---</div>
+      <div class="metric-unit">°/sec</div>
+    </div>
+    <div class="metric">
+      <div class="metric-label">GAMMA</div>
+      <div id="rg" class="metric-value orange">---</div>
+      <div class="metric-unit">°/sec</div>
+    </div>
+  </div>
+</div>
+
+<div class="section-title">Device orientation</div>
+<div class="card">
+  <div class="grid">
+    <div class="metric">
+      <div class="metric-label">ALPHA</div>
+      <div id="oa" class="metric-value">---</div>
+      <div class="metric-unit">degrees</div>
+    </div>
+    <div class="metric">
+      <div class="metric-label">BETA</div>
+      <div id="ob" class="metric-value">---</div>
+      <div class="metric-unit">degrees</div>
+    </div>
+    <div class="metric">
+      <div class="metric-label">GAMMA</div>
+      <div id="og" class="metric-value">---</div>
+      <div class="metric-unit">degrees</div>
+    </div>
+  </div>
+</div>
+
+<div class="footer">
+  Sensor readings are provided by iOS and may vary by device.<br>
+  Raw magnetometer XYZ is not exposed by the standard iOS web APIs.<br>
+  Readings are processed locally and are not transmitted.
+</div>
+
+<script>
+const $ = id => document.getElementById(id);
+
+const fmt = value =>
+  Number.isFinite(value) ? value.toFixed(3) : "---";
+
+const set = (id, value) => {
+  $(id).textContent = fmt(value);
+};
+
+function direction(degrees) {
+  const dirs = [
+    "N", "NE", "E", "SE", "S", "SW", "W", "NW"
+  ];
+  return dirs[Math.round(degrees / 45) % 8];
+}
+
+let active = false;
+
+function onMotion(event) {
+  const a = event.acceleration;
+  const g = event.accelerationIncludingGravity;
+  const r = event.rotationRate;
+
+  if (a) {
+    set("ax", a.x); set("ay", a.y); set("az", a.z);
+  }
+  if (g) {
+    set("gx", g.x); set("gy", g.y); set("gz", g.z);
+  }
+  if (r) {
+    set("ra", r.alpha);
+    set("rb", r.beta);
+    set("rg", r.gamma);
+  }
+}
+
+function onOrientation(event) {
+  const h = event.webkitCompassHeading;
+
+  if (Number.isFinite(h) && h >= 0) {
+    $("heading").textContent = h.toFixed(1);
+    $("direction").textContent = direction(h);
+
+    const accuracy = event.webkitCompassAccuracy;
+    $("accuracy").textContent =
+      Number.isFinite(accuracy)
+        ? `Compass accuracy: ±${accuracy}°`
+        : "Compass accuracy: unavailable";
+  }
+
+  set("oa", event.alpha);
+  set("ob", event.beta);
+  set("og", event.gamma);
+}
+
+async function startSensors() {
+  if (active) return;
+
+  try {
+    // Both permission requests must happen during this button click.
+    if (typeof DeviceMotionEvent.requestPermission === "function") {
+      const result = await DeviceMotionEvent.requestPermission();
+      if (result !== "granted") {
+        throw new Error("Motion permission was not granted.");
+      }
+    }
+
+    if (typeof DeviceOrientationEvent.requestPermission === "function") {
+      const result =
+        await DeviceOrientationEvent.requestPermission(true);
+      if (result !== "granted") {
+        throw new Error("Orientation permission was not granted.");
+      }
+    }
+
+    window.addEventListener("devicemotion", onMotion);
+    window.addEventListener("deviceorientation", onOrientation);
+
+    active = true;
+    $("status").textContent = "Sensors running";
+    $("status").classList.add("on");
+    $("start").disabled = true;
+    $("stop").disabled = false;
+
+  } catch (error) {
+    $("status").textContent = error.message;
+    console.error(error);
+  }
+}
+
+function stopSensors() {
+  window.removeEventListener("devicemotion", onMotion);
+  window.removeEventListener("deviceorientation", onOrientation);
+
+  active = false;
+  $("status").textContent = "Sensors stopped";
+  $("status").classList.remove("on");
+  $("start").disabled = false;
+  $("stop").disabled = true;
+}
+
+$("start").addEventListener("click", startSensors);
+$("stop").addEventListener("click", stopSensors);
+
+if ("serviceWorker" in navigator) {
+  window.addEventListener("load", () => {
+    navigator.serviceWorker.register("./sw.js").catch(console.error);
+  });
+}
+</script>
+</body>
+</html>
+
